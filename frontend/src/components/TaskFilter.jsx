@@ -13,7 +13,7 @@ const TaskFilter = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-        const res = await axios.post('http://localhost:8000/api/filter-inprogress-tasks', {
+        const res = await axios.post('https://minicore-fastapi-react.onrender.com/api/filter-inprogress-tasks', {
   start_date: startDate,
   end_date: endDate,
 });
