@@ -13,11 +13,13 @@ const TaskFilter = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-        const res = await axios.post('https://minicore-fastapi-react.onrender.com/api/filter-inprogress-tasks', {
-  start_date: startDate,
-  end_date: endDate,
-});
-
+        const res = await axios.post(
+  'https://minicore-fastapi-react.onrender.com/api/filter-inprogress-tasks',
+  {
+    start_date: startDate,
+    end_date: endDate,
+  }
+);
       setTasks(res.data);
     } catch (error) {
       alert('Error al obtener tareas');

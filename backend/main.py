@@ -38,7 +38,7 @@ app = FastAPI(lifespan=lifespan)
 # ✅ CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=["https://minicore-fastapi-react-1.onrender.com"],  # FRONTEND ESTÁTICO
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
