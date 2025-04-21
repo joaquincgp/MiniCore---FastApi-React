@@ -1,9 +1,9 @@
 from contextlib import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
-from backend.db.db import Empleado, Proyecto, Tarea
-from backend.db import db as db
-import backend.db.db_connection as db_connection
-from backend.db.db_connection import db_dependency
+from db.db import Empleado, Proyecto, Tarea
+from db import db as db
+import db.db_connection as db_connection
+from db.db_connection import db_dependency
 from datetime import date, timedelta
 import uvicorn
 from fastapi import FastAPI
