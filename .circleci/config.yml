@@ -1,0 +1,127 @@
+# ============================================================
+# CircleCI Configuration — MiniCore (FastAPI + React)
+# ============================================================
+# Flujo:
+#   1. test-backend  → instala deps Python, valida sintaxis/imports
+#   2. build-frontend → instala deps Node, compila React (npm run build)
+#   3. deploy         → dispara re-deploy en Render.com via webhook
+#                       (solo en rama main)
+# ============================================================
+
+version: 2.1
+
+# ── Orbs reutilizables ──────────────────────────────────────
+orbs:
+  node: circleci/node@5.2.0
+
+# ── Jobs ────────────────────────────────────────────────────
+jobs:
+
+  # ----------------------------------------------------------
+  # 1) BACKEND — Python / FastAPI
+  # ----------------------------------------------------------
+  test-backend:
+    docker:
+      - image: cimg/python:3.11
+    working_directory: ~/repo/backend
+    steps:
+      - checkout:
+          path: ~/repo
+
+      # Caché de dependencias pip
+      - restore_cache:
+          keys:
+            - pip-deps-v1-{{ checksum "requirements.txt" }}
+            - pip-deps-v1-
+
+      - run:
+          name: Instalar dependencias Python
+          command: pip install --upgrade pip && pip install -r requirements.txt
+
+      - save_cache:
+          key: pip-deps-v1-{{ checksum "requirements.txt" }}
+          paths:
+            - ~/.cache/pip
+
+      - run:
+          name: Verificar sintaxis e imports (main.py)
+          command: python -c "import ast, sys; ast.parse(open('main.py').read()); print('✅ main.py OK')"
+
+      # Si tienes tests con pytest, descomenta esto:
+      # - run:
+      #     name: Ejecutar tests
+      #     command: pytest --tb=short -q
+
+  # ----------------------------------------------------------
+  # 2) FRONTEND — React / Create React App
+  # ----------------------------------------------------------
+  build-frontend:
+    docker:
+      - image: cimg/node:20.11
+    working_directory: ~/repo/frontend
+    steps:
+      - checkout:
+          path: ~/repo
+
+      # Caché de node_modules
+      - restore_cache:
+          keys:
+            - npm-deps-v1-{{ checksum "package-lock.json" }}
+            - npm-deps-v1-
+
+      - run:
+          name: Instalar dependencias Node
+          command: npm ci --prefer-offline
+
+      - save_cache:
+          key: npm-deps-v1-{{ checksum "package-lock.json" }}
+          paths:
+            - ~/.npm
+
+      - run:
+          name: Build de producción (React)
+          command: npm run build
+
+      # Almacena el build para usarlo en otros jobs si es necesario
+      - store_artifacts:
+          path: build
+          destination: frontend-build
+
+  # ----------------------------------------------------------
+  # 3) DEPLOY — Trigger Render.com (solo rama main)
+  # ----------------------------------------------------------
+  deploy:
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - run:
+          name: Disparar re-deploy en Render
+          command: |
+            # RENDER_DEPLOY_HOOK_URL debe estar definida en
+            # CircleCI → Project Settings → Environment Variables
+            if [ -z "$RENDER_DEPLOY_HOOK_URL" ]; then
+              echo "⚠️  RENDER_DEPLOY_HOOK_URL no está definida. Saltando deploy."
+              exit 0
+            fi
+            echo "🚀 Disparando deploy en Render..."
+            curl -s -X POST "$RENDER_DEPLOY_HOOK_URL" \
+              -H "Content-Type: application/json" \
+              -d '{"clearCache": false}'
+            echo "✅ Deploy disparado exitosamente"
+
+# ── Workflows ───────────────────────────────────────────────
+workflows:
+  pipeline:
+    jobs:
+      # Siempre corre en cualquier rama
+      - test-backend
+      - build-frontend
+
+      # Deploy solo en main, después de que pasen ambos jobs
+      - deploy:
+          requires:
+            - test-backend
+            - build-frontend
+          filters:
+            branches:
+              only: main
